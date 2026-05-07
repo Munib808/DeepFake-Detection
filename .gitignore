@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+
+# Uploaded videos & extracted frames (generated at runtime)
+static/uploads/
+static/extracted_frames/
+static/extracted_faces/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+*.txt
+!requirements.txt
+!README.md
+
+# Wheel files
+*.whl

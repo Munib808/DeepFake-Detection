@@ -1,0 +1,11 @@
+flask>=3.0
+gunicorn
+opencv-python-headless==4.9.0.80
+tensorflow-cpu==2.16.2
+keras==3.5.0
+numpy==1.26.4
+insightface==0.7.3
+onnx==1.15.0
+onnxruntime>=1.16
+ml-dtypes==0.3.2
+scipy==1.11.4

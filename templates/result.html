@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepScan — Analysis Result</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #16161f;
+            --border: #1e1e2e;
+            --text-primary: #e8e8ed;
+            --text-secondary: #8888a0;
+            --text-muted: #555566;
+            --accent: #00d4aa;
+            --accent-dim: #00d4aa18;
+            --danger: #ff4466;
+            --danger-dim: #ff446618;
+            --safe: #00d4aa;
+            --safe-dim: #00d4aa18;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        .page { position: relative; z-index: 2; max-width: 900px; margin: 0 auto; padding: 32px 20px 64px; }
+
+        /* ── Top bar ────────────────────────────────────────────── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--accent); }
+
+        .session-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        /* ── Verdict Card ───────────────────────────────────────── */
+        .verdict-card {
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1px solid;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .verdict-card.fake {
+            background: var(--danger-dim);
+            border-color: rgba(255,68,102,0.25);
+        }
+        .verdict-card.real {
+            background: var(--safe-dim);
+            border-color: rgba(0,212,170,0.25);
+        }
+
+        .verdict-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .verdict-text {
+            font-size: clamp(40px, 8vw, 64px);
+            font-weight: 700;
+            letter-spacing: -2px;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+        .verdict-card.fake .verdict-text { color: var(--danger); }
+        .verdict-card.real .verdict-text { color: var(--safe); }
+
+        .verdict-file {
+            font-size: 14px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        /* ── Confidence Bar ─────────────────────────────────────── */
+        .confidence-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .confidence-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .confidence-header .title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .confidence-header .percentage {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .confidence-bar-track {
+            width: 100%;
+            height: 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .confidence-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+            width: 0;
+        }
+
+        .confidence-bar-fill.fake { background: linear-gradient(90deg, #ff4466, #ff6688); }
+        .confidence-bar-fill.real { background: linear-gradient(90deg, #00d4aa, #00eabb); }
+
+        .confidence-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ── Stats Grid ─────────────────────────────────────────── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+        }
+
+        .stat-card .stat-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .stat-card .stat-note {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ── Section Headers ────────────────────────────────────── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            margin-top: 8px;
+        }
+
+        .section-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .section-header .count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* ── Evidence Gallery ───────────────────────────────────── */
+        .evidence-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .evidence-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .evidence-card:hover {
+            border-color: var(--border-hover, #2d2d44);
+            transform: translateY(-2px);
+        }
+
+        .evidence-card .images {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: 140px;
+        }
+
+        .evidence-card .images img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .evidence-card .images .no-face {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .evidence-card .card-meta {
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .evidence-card .frame-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .evidence-card .face-badge {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .face-badge.detected {
+            background: var(--safe-dim);
+            color: var(--safe);
+        }
+        .face-badge.missing {
+            background: var(--danger-dim);
+            color: var(--danger);
+        }
+
+        /* ── Biometric Table ────────────────────────────────────── */
+        .bio-table-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        .bio-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .bio-table th {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .bio-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        .bio-table tr:last-child td { border-bottom: none; }
+
+        .bio-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+        /* ── Analyze Another ────────────────────────────────────── */
+        .another-btn {
+            display: block;
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto;
+            padding: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .another-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        @media (max-width: 480px) {
+            .verdict-card { padding: 28px 20px; }
+            .evidence-gallery { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .evidence-card .images { height: 110px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <a href="/" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+                New Analysis
+            </a>
+            <span class="session-tag">session: {{ result.session_id }}</span>
+        </div>
+
+        <!-- Verdict -->
+        <div class="verdict-card {{ 'fake' if result.is_fake else 'real' }}">
+            <div class="verdict-label">Detection Result</div>
+            <div class="verdict-text">{{ result.verdict }}</div>
+            <div class="verdict-file">{{ result.video_filename }}</div>
+        </div>
+
+        <!-- Confidence Bar -->
+        <div class="confidence-section">
+            <div class="confidence-header">
+                <span class="title">Confidence Score</span>
+                <span class="percentage" style="color: {{ '#ff4466' if result.is_fake else '#00d4aa' }}">
+                    {{ result.fake_confidence if result.is_fake else result.real_confidence }}%
+                </span>
+            </div>
+            <div class="confidence-bar-track">
+                <div class="confidence-bar-fill {{ 'fake' if result.is_fake else 'real' }}"
+                     id="confBar"
+                     data-width="{{ result.fake_confidence if result.is_fake else result.real_confidence }}">
+                </div>
+            </div>
+            <div class="confidence-labels">
+                <span>REAL {{ result.real_confidence }}%</span>
+                <span>FAKE {{ result.fake_confidence }}%</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Duration</div>
+                <div class="stat-value">{{ result.video_duration }}s</div>
+                <div class="stat-note">{{ result.video_fps }} FPS · {{ result.video_resolution }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Frames Sampled</div>
+                <div class="stat-value">{{ result.total_frames_sampled }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Faces Detected</div>
+                <div class="stat-value">{{ result.faces_detected }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Processing Time</div>
+                <div class="stat-value">{{ result.processing_time }}s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Blink Rate</div>
+                <div class="stat-value">{{ result.blink_rate }}</div>
+                <div class="stat-note">normalized (0–2)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">IOD Variance</div>
+                <div class="stat-value">{{ result.iod_variance }}</div>
+                <div class="stat-note">inter-ocular distance</div>
+            </div>
+        </div>
+
+        <!-- Visual Evidence -->
+        <div class="section-header">
+            <h2>Visual Evidence</h2>
+            <span class="count">{{ result.frame_details|length }} frames</span>
+        </div>
+
+        <div class="evidence-gallery">
+            {% for frame in result.frame_details %}
+            <div class="evidence-card">
+                <div class="images">
+                    <img src="{{ url_for('static', filename=frame.frame_path) }}"
+                         alt="Frame {{ frame.seq_idx }}" loading="lazy">
+                    {% if frame.face_detected and frame.face_path %}
+                        <img src="{{ url_for('static', filename=frame.face_path) }}"
+                             alt="Face {{ frame.seq_idx }}" loading="lazy">
+                    {% else %}
+                        <div class="no-face">NO FACE</div>
+                    {% endif %}
+                </div>
+                <div class="card-meta">
+                    <span class="frame-label">F{{ '%03d'|format(frame.frame_num) }}</span>
+                    <span class="face-badge {{ 'detected' if frame.face_detected else 'missing' }}">
+                        {{ 'FACE OK' if frame.face_detected else 'NO FACE' }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Biometric Details -->
+        {% if result.per_face_scores %}
+        <div class="section-header">
+            <h2>Per-Frame Biometrics</h2>
+            <span class="count">{{ result.per_face_scores|length }} faces analyzed</span>
+        </div>
+
+        <div class="bio-table-wrap">
+            <table class="bio-table">
+                <thead>
+                    <tr>
+                        <th>Frame</th>
+                        <th>Symmetry</th>
+                        <th>EAR (avg)</th>
+                        <th>Brightness</th>
+                        <th>Contrast</th>
+                        <th>Sharpness</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for face in result.per_face_scores %}
+                    <tr>
+                        <td>F{{ '%03d'|format(face.seq_idx) }}</td>
+                        <td>{{ face.symmetry }}</td>
+                        <td>{{ face.ear_avg }}</td>
+                        <td>{{ face.brightness }}</td>
+                        <td>{{ face.contrast }}</td>
+                        <td>{{ face.sharpness }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <a href="/" class="another-btn">Analyze Another Video</a>
+    </div>
+
+    <script>
+        // Animate confidence bar on load
+        window.addEventListener('load', () => {
+            const bar = document.getElementById('confBar');
+            const w = bar.dataset.width;
+            setTimeout(() => { bar.style.width = w + '%'; }, 200);
+        });
+    </script>
+</body>
+</html>
